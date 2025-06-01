@@ -1,6 +1,4 @@
-import \
-    os
-
+import os
 from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 import pandas as pd
@@ -9,37 +7,49 @@ import tempfile
 
 warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
 
+STATES_CODES = {
+        "JAMMU AND KASHMIR": "01",
+        "HIMACHAL PRADESH": "02",
+        "PUNJAB": "03",
+        "CHANDIGARH": "04",
+        "UTTARAKHAND": "05",
+        "HARYANA": "06",
+        "DELHI": "07",
+        "RAJASTHAN": "08",
+        "UTTAR PRADESH": "09",
+        "BIHAR": "10",
+        "SIKKIM": "11",
+        "ARUNACHAL PRADESH": "12",
+        "NAGALAND": "13",
+        "MANIPUR": "14",
+        "MIZORAM": "15",
+        "TRIPURA": "16",
+        "MEGHALAYA": "17",
+        "ASSAM": "18",
+        "WEST BENGAL": "19",
+        "JHARKHAND": "20",
+        "CHHATTISGARH": "21",
+        "ODISHA": "22",
+        "MADHYA PRADESH": "23",
+        "GUJARAT": "24",
+        "DAMAN AND DIU": "25",
+        "DADRA AND DIU AND NAGAR HAVELI": "26",
+        "MAHARASHTRA": "27",
+        "KARNATAKA": "29",
+        "GOA": "30",
+        "LAKSHADWEEP": "31",
+        "KERALA": "32",
+        "TAMIL NADU": "33",
+        "PUDUCHERRY": "34",
+        "ANDAMAN AND NICOBAR ISLANDS": "35",
+        "TELANGANA": "36",
+        "ANDHRA PRADESH": "37",
+        "LADAKH": "38",
+        "OTHER TERRITORY": "97",
+        "CENTRE JURISDICTION": "99"
+    }
+
 app = FastAPI()
-
-
-# @app.post("/process-excel")
-# async def process_excel(file : UploadFile = File(...)):
-#     print("Python started")
-#     contents = await file.read()
-#
-#     # define the columns that need to be extracted and new columns name
-#     selected_col = [
-#         'end_customer_state_new',
-#         'total_taxable_sale_value',
-#         'gst_rate']
-#     new_col_name = {
-#         'State': 'end_customer_state_new',
-#         'Taxable_value': 'total_taxable_sale_value',
-#         'GST_rate': 'gst_rate',
-#     }
-#
-#     # creating dataframe
-#     sales = pd.read_excel(BytesIO(contents), usecols= selected_col)
-#
-#     #copying the read data of specific column to new Excel file
-#     output = BytesIO
-#     sales.to_excel(output, index = False)
-#     output.seek(0)
-#
-#     return StreamingResponse(output, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', headers={
-#         "Content-Disposition": f"attachment; filename=processed_{file.filename}.xlsx"
-#     })
-
 
 @app.post("/process/")
 async def process_file(
@@ -76,10 +86,13 @@ async def process_file(
         # Creating Pivot table
         pivot_table = make_pivot(combined_file)
 
-        # Save to tmep File
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as temp:
+        #Converting PIVOT table into CSV file
+        csv_sales_file = final_csv_file(pivot_table)
+
+        # Save to temp File
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as temp:
             output_path = temp.name
-            pivot_table.to_excel(output_path)
+            csv_sales_file.to_csv(output_path, index=False)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Processing error: {str(e)}")
@@ -90,8 +103,8 @@ async def process_file(
     # returning the processed file
     return FileResponse(
         path = output_path,
-        filename="messho_processed_file.xlsx",
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        filename="messho_processed_csv_file.csv",
+        media_type="text/csv"
     )
 
 
@@ -122,3 +135,53 @@ def make_pivot(file : pd.DataFrame):
         margins=False
     )
 
+# Convert PIVOT TABLE to CSV file
+def final_csv_file(pivot_table):
+
+    #Required Columns
+    place_of_supply = 'Place Of Supply'
+    rate = 'Rate'
+    taxable_value = 'Taxable Value'
+    _type = 'Type'
+    applicable_tax_rate = 'Applicable % of Tax Rate'
+    cess_amount = 'Cess Amount'
+    gst_no = 'E-Commerce GSTIN'
+
+    #Resetting the index
+    csv_sales_file = pivot_table.reset_index()
+
+    # Rename columns
+    csv_sales_file = csv_sales_file.rename(columns = {
+        'end_customer_state_new': place_of_supply,
+        'gst_rate': rate,
+        'total_taxable_sale_value': taxable_value
+    })
+
+    #Formatting the states
+    #csv_sales_file[place_of_supply] = csv_sales_file[place_of_supply].astype(str).apply(string.capwords)
+
+    #Fill blank 'Place Of Supply' with the last non-blank value (forward fill)
+    csv_sales_file[place_of_supply] = csv_sales_file[place_of_supply].ffill()
+
+    # Applying function to add the state code
+    csv_sales_file[place_of_supply] = csv_sales_file[place_of_supply].apply(add_state_code)
+
+    # Add missing columns with default values
+    csv_sales_file[_type] = 'OE'
+    csv_sales_file[applicable_tax_rate] = ''
+    csv_sales_file[cess_amount] = ''
+    csv_sales_file[gst_no] = ''
+
+    # Reorder columns to match the b2cs- Format.csv
+    csv_sales_file = csv_sales_file[[_type, place_of_supply, rate, applicable_tax_rate, taxable_value, cess_amount, gst_no]]
+
+    return csv_sales_file
+
+# FUNCTION : Convert State to state code String
+def add_state_code(state_name):
+    print(state_name)
+    code = STATES_CODES.get(state_name)
+    if code:
+        return f"{code}- {state_name}"
+
+    return state_name
