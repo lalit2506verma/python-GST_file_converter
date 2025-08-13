@@ -1,4 +1,6 @@
 import os
+import traceback
+
 from fastapi import FastAPI, File, UploadFile, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
 import pandas as pd
@@ -7,51 +9,56 @@ import tempfile
 
 warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
 
+SAVE_DIR = r"C:\Users\MSI 1\Desktop\Stofin Website\Output_file\program_output"
+os.makedirs(SAVE_DIR, exist_ok=True)
+
 STATES_CODES = {
-        "JAMMU AND KASHMIR": "01",
-        "HIMACHAL PRADESH": "02",
-        "PUNJAB": "03",
-        "CHANDIGARH": "04",
-        "UTTARAKHAND": "05",
-        "HARYANA": "06",
-        "DELHI": "07",
-        "RAJASTHAN": "08",
-        "UTTAR PRADESH": "09",
-        "BIHAR": "10",
-        "SIKKIM": "11",
-        "ARUNACHAL PRADESH": "12",
-        "NAGALAND": "13",
-        "MANIPUR": "14",
-        "MIZORAM": "15",
-        "TRIPURA": "16",
-        "MEGHALAYA": "17",
-        "ASSAM": "18",
-        "WEST BENGAL": "19",
-        "JHARKHAND": "20",
-        "CHHATTISGARH": "21",
-        "ODISHA": "22",
-        "MADHYA PRADESH": "23",
-        "GUJARAT": "24",
-        "DAMAN AND DIU": "25",
-        "DADRA AND DIU AND NAGAR HAVELI": "26",
-        "MAHARASHTRA": "27",
-        "KARNATAKA": "29",
-        "GOA": "30",
-        "LAKSHADWEEP": "31",
-        "KERALA": "32",
-        "TAMIL NADU": "33",
-        "PUDUCHERRY": "34",
-        "ANDAMAN AND NICOBAR ISLANDS": "35",
-        "TELANGANA": "36",
-        "ANDHRA PRADESH": "37",
-        "LADAKH": "38",
-        "OTHER TERRITORY": "97",
-        "CENTRE JURISDICTION": "99"
+        "JAMMU AND KASHMIR": "01-Jammu & Kashmir",
+        "JAMMU & KASHMIR": "01-Jammu & Kashmir",
+        "HIMACHAL PRADESH": "02-Himachal Pradesh",
+        "PUNJAB": "03-Punjab",
+        "CHANDIGARH": "04-Chandigarh",
+        "UTTARAKHAND": "05-Uttarakhand",
+        "HARYANA": "06-Haryana",
+        "DELHI": "07-Delhi",
+        "RAJASTHAN": "08-Rajasthan",
+        "UTTAR PRADESH": "09-Uttar Pradesh",
+        "BIHAR": "10-Bihar",
+        "SIKKIM": "11-Sikkim",
+        "ARUNACHAL PRADESH": "12-Arunachal Pradesh",
+        "NAGALAND": "13-Nagaland",
+        "MANIPUR": "14-Manipur",
+        "MIZORAM": "15-Mizoram",
+        "TRIPURA": "16-Tripura",
+        "MEGHALAYA": "17-Meghalaya",
+        "ASSAM": "18-Assam",
+        "WEST BENGAL": "19-West Bengal",
+        "JHARKHAND": "20-Jharkhand",
+        "CHHATTISGARH": "21-Odisha",
+        "ODISHA": "22-Chhattisgarh",
+        "MADHYA PRADESH": "23-Madhya Pradesh",
+        "GUJARAT": "24-Gujarat",
+        "DAMAN AND DIU": "25-Daman & Diu",
+        "DADRA AND DIU AND NAGAR HAVELI": "26-Dadra & Nagar Haveli & Daman & Diu",
+        "THE DADRA AND NAGAR HAVELI AND DAMAN AND DIU": "26-Dadra & Nagar Haveli & Daman & Diu",
+        "MAHARASHTRA": "27-Maharashtra",
+        "KARNATAKA": "29-Karnataka",
+        "GOA": "30-Goa",
+        "LAKSHDWEEP": "31-Lakshdweep",
+        "KERALA": "32-Kerala",
+        "TAMIL NADU": "33-Tamil Nadu",
+        "PUDUCHERRY": "34-Puducherry",
+        "PONDICHERRY": "34-Puducherry",
+        "ANDAMAN AND NICOBAR ISLANDS": "35-Andaman & Nicobar Islands",
+        "TELANGANA": "36-Telangana",
+        "ANDHRA PRADESH": "37-Andhra Pradesh",
+        "LADAKH": "38-Ladakh",
+        "OTHER TERRITORY": "97-Other Territory",
     }
 
 app = FastAPI()
 
-@app.post("/process/")
+@app.post("/process-file/")
 async def process_file(
         sales_file : UploadFile = File(...),
         return_sales_file : UploadFile = File(...),
@@ -86,6 +93,11 @@ async def process_file(
         # Creating Pivot table
         pivot_table = make_pivot(combined_file)
 
+        # Save pivot as excel to specific location
+        excel_filename = os.path.join(SAVE_DIR, "pivot_output.xlsx")
+        pivot_table.to_excel(excel_filename, index=True)
+        print(f"Pivot table saved to: {excel_filename}")
+
         #Converting PIVOT table into CSV file
         csv_sales_file = final_csv_file(pivot_table)
 
@@ -95,6 +107,8 @@ async def process_file(
             csv_sales_file.to_csv(output_path, index=False)
 
     except Exception as e:
+        print("Error occurred:", e)
+        traceback.print_exc()  # This prints the full traceback to the terminal
         raise HTTPException(status_code=500, detail=f"Processing error: {str(e)}")
 
     # Background cleanup
@@ -182,6 +196,12 @@ def add_state_code(state_name):
     print(state_name)
     code = STATES_CODES.get(state_name)
     if code:
-        return f"{code}- {state_name}"
+        return code
 
     return state_name
+
+
+import uvicorn
+
+if __name__ == '__main__':
+    uvicorn.run(app, host='localhost', port=8000)
