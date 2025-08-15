@@ -1,6 +1,6 @@
 import json
 
-from config import GSTIN, FP, VERSION, HASH_VAL, B2CS_MAPPING
+from app.core.config import GSTIN, FP, VERSION, HASH_VAL, B2CS_MAPPING
 
 def csv_to_gst_json(df, output_path):
 

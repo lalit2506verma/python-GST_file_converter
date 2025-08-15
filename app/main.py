@@ -5,9 +5,9 @@ import tempfile
 import os
 import traceback
 
-from services.file_processing import read_file, make_pivot, final_csv_file
-from services.json_conversion import csv_to_gst_json
-from config import SAVE_DIR
+from app.services.file_processing import read_file, make_pivot, final_csv_file
+from app.services.json_conversion import csv_to_gst_json
+from app.core.config import SAVE_DIR
 
 app = FastAPI()
 
@@ -57,6 +57,37 @@ async def process_file(
         background_tasks.add_task(os.remove, csv_path)
 
         return FileResponse(path=csv_path, filename="processed.csv", media_type="text/csv")
+
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("meesho-tax_invoice")
+async def m_tax_invoice(
+        tax_invoice: UploadFile = File(...),
+        background_tasks: BackgroundTasks = BackgroundTasks()
+):
+
+    try:
+
+        # Validating file is valid excel or CSV file or not
+        df = read_file(tax_invoice)
+
+        # checking valid column exist in the file or not
+        required_cols = ['Type', 'Invoice No.']
+
+        if not all(c in df.columns for c in required_cols):
+            raise HTTPException(status_code=422, detail=f"Missing required columns: {required_cols}")
+
+        # NOW THE FILE IS ALSO VALID AND COLUMNS ALSO EXISTS
+
+        # Create separate Dataframe for "INVOICE" and "CREDIT NOTE"
+        invoice_df = df[df["Type"] == "INVOICE"]
+        credit_note_df = df[df["Type"] == "CREDIT NOTE"]
+
+        #
+
 
     except Exception as e:
         traceback.print_exc()

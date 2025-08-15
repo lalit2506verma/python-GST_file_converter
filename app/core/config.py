@@ -1,13 +1,22 @@
 import os
 
+from pydantic import DirectoryPath
+from pydantic_settings import BaseSettings
+from typing import Dict
+from pathlib import Path
+
+class Settings(BaseSettings):
+    APP_NAME: str = "GST Service"
+    ENV: str = "dev"
+
 # GST JSON meta
-GSTIN = "09ALQPV7622J1Z8"
-FP = "072025"
-VERSION = "GST3.2.2"
-HASH_VAL = "hash"
+GSTIN: str = "09ALQPV7622J1Z8"
+FP: str = "072025"
+VERSION: str = "GST3.2.2"
+HASH_VAL: str = "hash"
 
 # Mapping CSV column names to GST JSON keys
-B2CS_MAPPING = {
+B2CS_MAPPING: Dict[str, str] = {
     "Rate": "rt",
     "Type": "typ",
     "Place Of Supply": "pos",
@@ -16,10 +25,9 @@ B2CS_MAPPING = {
 }
 
 # directory to save the PIVOT table
-SAVE_DIR = r"C:\Users\MSI 1\Desktop\Stofin Website\Output_file\program_output"
-os.makedirs(SAVE_DIR, exist_ok=True)
+SAVE_DIR: Path = Path(r"C:\Users\MSI 1\Desktop\Stofin Website\Output_file\program_output")
 
-STATES_CODES = {
+STATES_CODES: Dict[str, str] = {
         "JAMMU AND KASHMIR": "01-Jammu & Kashmir",
         "JAMMU & KASHMIR": "01-Jammu & Kashmir",
         "HIMACHAL PRADESH": "02-Himachal Pradesh",
@@ -63,3 +71,7 @@ STATES_CODES = {
         "OTHER TERRITORY": "97-Other Territory",
     }
 
+class Config:
+    env_file = ".venv"
+
+settings = Settings()

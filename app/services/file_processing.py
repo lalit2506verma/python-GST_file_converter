@@ -1,6 +1,5 @@
 import pandas as pd
-import os
-from config import STATES_CODES
+from app.core.config import STATES_CODES
 
 # Read EXCEL or CSV file
 def read_file(upload_file):
