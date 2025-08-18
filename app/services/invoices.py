@@ -1,31 +1,27 @@
-import re
-from typing import Optional, Dict
-
 import pandas as pd
+from app.utils.invoice_numbers import min_max_whole
 
-def split_by_type(df: pd.DataFrame, type_col: str = "Type"):
-    ser = df[type_col].astype(str).str.upper().str.strip()
-    return df[ser == "INVOICE"].copy(), df[ser == "CREDIT NOTE"].copy()
+DOC_TYPE_MAPPING = {
+    "INVOICE": "Invoices for outward supply",
+    "CREDIT NOTE": "Credit Note",
+    # extend later:
+    # "DEBIT NOTE": "Debit Note",
+    # "REVISED INVOICE": "Revised Invoice",
+    # "INWARD UNREG": "Invoices for inward supply from unregistered person",
+}
 
-def extract_invoice_number_stats(df: pd.DataFrame, col: str = "Invoice No.") -> Optional[Dict[str, str]]:
-    if df.empty:
-        return None
+def generate_invoice_summary(df: pd.DataFrame, doc_type: str, col: str = "Invoice No.") -> pd.DataFrame:
+    nature = DOC_TYPE_MAPPING.get(doc_type)
+    if not nature:
+        raise ValueError(f"Unsupported doc_type: {doc_type}")
 
-    def extract_suffix_number(invoice: str) -> int:
-        # Extract the last number from the string (numeric suffix)
-        match = re.search(r"(\d+)$", str(invoice))
-        return int(match.group()) if match else -1
+    min_inv, max_inv, count = min_max_whole(df, col)
+    cancelled = 0  # hook later if you add a status column
 
-    df["_num"] = df[col].apply(extract_suffix_number)
-
-    min_invoice = df.loc[df["_num"].idxmin(), col]
-    max_invoice = df.loc[df["_num"].idxmax(), col]
-    count = len(df)
-
-    df.drop(columns=["_num"])
-
-    return {
-        "min_invoice": min_invoice,
-        "max_invoice": max_invoice,
-        "count": str(count),
-    }
+    return pd.DataFrame([{
+        "Nature of Document": nature,
+        "Sr. No. From": min_inv,
+        "Sr. No. To": max_inv,
+        "Total Number": count,
+        "Cancelled": cancelled
+    }])
