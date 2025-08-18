@@ -80,10 +80,16 @@ async def m_tax_invoice(
         # split the dataframe based on Type
         invoice_df, credit_note_df = split_by_type(df, "Type")
 
-        return {
-            "invoices_stats": extract_invoice_number_stats(invoice_df, "Invoice No."),
-            "credit_note_stats": extract_invoice_number_stats(credit_note_df, "Invoice No."),
-        }
+        invoice_summary = extract_invoice_number_stats(invoice_df, "INVOICE", "Invoice No.")
+        credit_note_summary = extract_invoice_number_stats(credit_note_df, "CREDIT NOTE", "Invoice No.")
+
+        final_summary = pd.concat([invoice_summary, credit_note_summary], ignore_index=True)
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as tmp:
+            final_summary.to_csv(tmp.name, index=False)
+            file_path = tmp.name
+
+        return FileResponse(file_path, filename="doc.csv", media_type="text/csv")
 
     except ValueError as ve:
         raise HTTPException(status_code=422, detail=str(ve))

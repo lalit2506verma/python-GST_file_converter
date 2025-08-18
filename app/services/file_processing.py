@@ -1,7 +1,6 @@
-from typing import Iterable
+from typing import Iterable, Dict
 
 import pandas as pd
-from jinja2.utils import missing
 
 from app.core.config import STATES_CODES
 
@@ -30,11 +29,11 @@ def require_columns(df: pd.DataFrame, cols: Iterable[str]):
     if missing:
         raise ValueError(f"Missing Required Columns: {missing}")
 
-def add_state_code(state_name):
+def add_state_code(state_name: str) -> str:
     return STATES_CODES.get(state_name, state_name)
 
 # Converting CSV file from PIVOT table
-def final_csv_file(pivot_table):
+def final_csv_file(pivot_table) -> pd.DataFrame:
     place_of_supply = 'Place Of Supply'
     rate = 'Rate'
     taxable_value = 'Taxable Value'
@@ -56,3 +55,7 @@ def final_csv_file(pivot_table):
     df[gst_no] = ''
 
     return df[[_type, place_of_supply, rate, applicable_tax_rate, taxable_value, cess_amount, gst_no]]
+
+
+# def doc_csv_file(rec: Dict[str, str], type: str) -> pd.DataFrame:
+#     if
