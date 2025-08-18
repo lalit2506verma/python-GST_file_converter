@@ -1,4 +1,8 @@
+from typing import Iterable
+
 import pandas as pd
+from jinja2.utils import missing
+
 from app.core.config import STATES_CODES
 
 # Read EXCEL or CSV file
@@ -20,6 +24,11 @@ def make_pivot(df):
         aggfunc='sum',
         fill_value=0
     )
+
+def require_columns(df: pd.DataFrame, cols: Iterable[str]):
+    missing = [c for c in cols if c not in df.columns]
+    if missing:
+        raise ValueError(f"Missing Required Columns: {missing}")
 
 def add_state_code(state_name):
     return STATES_CODES.get(state_name, state_name)

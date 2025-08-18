@@ -1,16 +1,9 @@
 import os
-
-from pydantic import DirectoryPath
-from pydantic_settings import BaseSettings
 from typing import Dict
 from pathlib import Path
 
-class Settings(BaseSettings):
-    APP_NAME: str = "GST Service"
-    ENV: str = "dev"
-
 # GST JSON meta
-GSTIN: str = "09ALQPV7622J1Z8"
+GSTIN: str = "06BOJPL0810B1ZL"
 FP: str = "072025"
 VERSION: str = "GST3.2.2"
 HASH_VAL: str = "hash"
@@ -26,6 +19,7 @@ B2CS_MAPPING: Dict[str, str] = {
 
 # directory to save the PIVOT table
 SAVE_DIR: Path = Path(r"C:\Users\MSI 1\Desktop\Stofin Website\Output_file\program_output")
+os.makedirs(SAVE_DIR, exist_ok=True)
 
 STATES_CODES: Dict[str, str] = {
         "JAMMU AND KASHMIR": "01-Jammu & Kashmir",
@@ -71,7 +65,3 @@ STATES_CODES: Dict[str, str] = {
         "OTHER TERRITORY": "97-Other Territory",
     }
 
-class Config:
-    env_file = ".venv"
-
-settings = Settings()

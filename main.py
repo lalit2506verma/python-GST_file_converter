@@ -5,7 +5,8 @@ import tempfile
 import os
 import traceback
 
-from app.services.file_processing import read_file, make_pivot, final_csv_file
+from app.services.file_processing import read_file, make_pivot, final_csv_file, require_columns
+from app.services.invoices import split_by_type, extract_invoice_number_stats
 from app.services.json_conversion import csv_to_gst_json
 from app.core.config import SAVE_DIR
 
@@ -63,31 +64,29 @@ async def process_file(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.post("meesho-tax_invoice")
+@app.post("/meesho-tax_invoice/")
 async def m_tax_invoice(
         tax_invoice: UploadFile = File(...),
         background_tasks: BackgroundTasks = BackgroundTasks()
 ):
 
     try:
-
         # Validating file is valid excel or CSV file or not
         df = read_file(tax_invoice)
 
-        # checking valid column exist in the file or not
-        required_cols = ['Type', 'Invoice No.']
+        # Validate Required Columns are present or not
+        require_columns(df, ("Type", "HSN", "Invoice No."))
 
-        if not all(c in df.columns for c in required_cols):
-            raise HTTPException(status_code=422, detail=f"Missing required columns: {required_cols}")
+        # split the dataframe based on Type
+        invoice_df, credit_note_df = split_by_type(df, "Type")
 
-        # NOW THE FILE IS ALSO VALID AND COLUMNS ALSO EXISTS
+        return {
+            "invoices_stats": extract_invoice_number_stats(invoice_df, "Invoice No."),
+            "credit_note_stats": extract_invoice_number_stats(credit_note_df, "Invoice No."),
+        }
 
-        # Create separate Dataframe for "INVOICE" and "CREDIT NOTE"
-        invoice_df = df[df["Type"] == "INVOICE"]
-        credit_note_df = df[df["Type"] == "CREDIT NOTE"]
-
-        #
-
+    except ValueError as ve:
+        raise HTTPException(status_code=422, detail=str(ve))
 
     except Exception as e:
         traceback.print_exc()
